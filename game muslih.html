@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+/* Gaya canvas */
+canvas {
+    border: 2px solid #4CAF50;
+    background: linear-gradient(to bottom, #87CEEB, #f1f1f1);
+    display: block;
+    margin: 20px auto;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Tombol restart */
+.restart-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 15px 40px;
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    background-color: #FF4500;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease, opacity 0.5s ease;
+    z-index: 10;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Animasi hover untuk tombol */
+.restart-btn:hover {
+    background-color: #FF6347;
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* Tombol restart muncul */
+.restart-btn.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Tombol lompat */
+.jump-btn {
+    padding: 10px 20px;
+    font-size: 18px;
+    font-weight: bold;
+    color: white;
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    margin: 10px auto;
+    display: block;
+}
+
+.jump-btn:hover {
+    background-color: #45A049;
+    transform: scale(1.1);
+}
+
+/* Gaya teks */
+p {
+    text-align: center;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+}
+</style>
+</head>
+<body onload="startGame()">
+<script>
+var myGamePiece;
+var myObstacles = [];
+var myScore;
+var gameOver = false;
+
+function startGame() {
+    gameOver = false;
+    hideRestartButton();
+    myGamePiece = new component(30, 30, "red", 10, 120, "circle");
+    myGamePiece.gravity = 0.05;
+    myObstacles = [];
+    myScore = new component("30px", "Consolas", "black", 280, 40, "text");
+    myGameArea.start();
+}
+
+var myGameArea = {
+    canvas: document.createElement("canvas"),
+    start: function () {
+        this.canvas.width = 500;
+        this.canvas.height = 500;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.frameNo = 0;
+        this.interval = setInterval(updateGameArea, 20);
+    },
+    clear: function () {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+    stop: function () {
+        clearInterval(this.interval);
+        gameOver = true;
+        showRestartButton();
+    },
+};
+
+function component(width, height, color, x, y, type) {
+    this.type = type;
+    this.score = 0;
+    this.width = width;
+    this.height = height;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.x = x;
+    this.y = y;
+    this.gravity = 0;
+    this.gravitySpeed = 0;
+    this.update = function () {
+        ctx = myGameArea.context;
+        if (this.type == "text") {
+            ctx.font = this.width + " " + this.height;
+            ctx.fillStyle = color;
+            ctx.fillText(this.text, this.x, this.y);
+        } else if (this.type === "circle") {
+            ctx.beginPath();
+            ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.closePath();
+
+            /* Huruf di tengah lingkaran */
+            ctx.font = "bold 18px Arial";
+            ctx.fillStyle = "white";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("M", this.x + this.width / 2, this.y + this.height / 2);
+        } else {
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    };
+    this.newPos = function () {
+        this.gravitySpeed += this.gravity;
+        this.x += this.speedX;
+        this.y += this.speedY + this.gravitySpeed;
+        this.hitBounds();
+    };
+    this.hitBounds = function () {
+        var bottom = myGameArea.canvas.height - this.height;
+        if (this.y > bottom || this.y < 0) {
+            myGameArea.stop();
+        }
+    };
+    this.crashWith = function (otherobj) {
+        var myleft = this.x;
+        var myright = this.x + this.width;
+        var mytop = this.y;
+        var mybottom = this.y + this.height;
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + otherobj.width;
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + otherobj.height;
+        var crash = true;
+        if (mybottom < othertop || mytop > otherbottom || myright < otherleft || myleft > otherright) {
+            crash = false;
+        }
+        return crash;
+    };
+}
+
+function updateGameArea() {
+    var x, height, gap, minHeight, maxHeight, minGap, maxGap;
+    for (i = 0; i < myObstacles.length; i += 1) {
+        if (myGamePiece.crashWith(myObstacles[i])) {
+            myGameArea.stop();
+            return;
+        }
+    }
+    myGameArea.clear();
+    myGameArea.frameNo += 1;
+
+    /* Beton hijau dengan gerakan dinamis */
+    if (myGameArea.frameNo == 1 || everyinterval(150)) {
+        x = myGameArea.canvas.width;
+        minHeight = 20;
+        maxHeight = 200;
+        height = Math.floor(Math.random() * (maxHeight - minHeight + 1) + minHeight);
+        minGap = 50;
+        maxGap = 200;
+        gap = Math.floor(Math.random() * (maxGap - minGap + 1) + minGap);
+        myObstacles.push(new component(10, height, "green", x, 0));
+        myObstacles.push(new component(10, x - height - gap, "green", x, height + gap));
+    }
+
+    for (i = 0; i < myObstacles.length; i += 1) {
+        myObstacles[i].x += -1;
+        myObstacles[i].y += (Math.random() > 0.5 ? 0.5 : -0.5); // Pergerakan vertikal
+        myObstacles[i].update();
+
+        if (myObstacles[i].x < myGamePiece.x && !myObstacles[i].passed) {
+            myObstacles[i].passed = true;
+            myScore.score += 10;
+        }
+    }
+
+    myScore.text = "SCORE: " + myScore.score;
+    myScore.update();
+    myGamePiece.newPos();
+    myGamePiece.update();
+}
+
+function everyinterval(n) {
+    return (myGameArea.frameNo / n) % 1 === 0;
+}
+
+function accelerate(n) {
+    if (!gameOver) {
+        myGamePiece.gravity = n;
+    }
+}
+
+function showRestartButton() {
+    const restartBtn = document.getElementById("restartBtn");
+    restartBtn.classList.add("show");
+}
+
+function hideRestartButton() {
+    const restartBtn = document.getElementById("restartBtn");
+    restartBtn.classList.remove("show");
+}
+</script>
+
+<!-- Tombol Lompat -->
+<button class="jump-btn" onmousedown="accelerate(-0.2)" onmouseup="accelerate(0.05)">Lompat</button>
+<p>jatoh cupu</p>
+<p>Game by: Muslih Fadilah Syamil</p>
+
+<!-- Tombol restart -->
+<button id="restartBtn" class="restart-btn" onclick="startGame()">Restart</button>
+
+</body>
+</html>
